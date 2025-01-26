@@ -1,7 +1,7 @@
 node {
     stage('Clone Repository') {
         echo "Cloning the repository"
-        git url: 'https://github.com/maruthan64/gcp_secrets_all.git'
+        git branch: 'main', url: 'https://github.com/maruthan64/gcp_secrets_all.git'
     }
 
     stage('Load Secrets') {
