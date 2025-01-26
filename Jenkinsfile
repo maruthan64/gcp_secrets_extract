@@ -4,6 +4,18 @@ node {
         git branch: 'main', url: 'https://github.com/maruthan64/gcp_secrets_all.git'
     }
 
+    stage('Verify Repository') {
+        echo "Verifying repository contents"
+        def repoDir = 'gcp_secrets_all'
+        if (!fileExists(repoDir)) {
+            error "Repository directory '${repoDir}' does not exist."
+        }
+        def secretsFile = "${repoDir}/secrets.env"
+        if (!fileExists(secretsFile)) {
+            error "Secrets file '${secretsFile}' does not exist."
+        }
+    }
+
     stage('Load Secrets') {
         echo "Loading secrets from secrets.env"
         def secrets = readFile 'gcp_secrets_all/secrets.env'
