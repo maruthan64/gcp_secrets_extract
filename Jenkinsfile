@@ -1,4 +1,30 @@
 node {
+    stage('Clone Repository') {
+        echo "Cloning the repository"
+        git url: 'https://github.com/maruthan64/gcp_secrets_all.git'
+    }
+
+    stage('Load Secrets') {
+        echo "Loading secrets from secrets.env"
+        def secrets = readFile 'gcp_secrets_all/secrets.env'
+        def lines = secrets.split('\n')
+        lines.each { line ->
+            if (line && !line.startsWith('#')) {
+                def parts = line.split('=')
+                def key = parts[0].trim()
+                def value = parts[1].trim()
+                env."${key}" = value
+            }
+        }
+    }
+
+    stage('Print Secrets') {
+        echo "Printing secrets"
+        echo "PROJ_API_KEY: ${env.PROJ_API_KEY}"
+        echo "SQL_USERNAME: ${env.SQL_USERNAME}"
+        echo "SQL_PASSWORD: ${env.SQL_PASSWORD}"
+    }
+
     stage('Capture Disk Space') {
         echo "Capturing Disk Space Information"
         
