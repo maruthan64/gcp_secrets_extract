@@ -5,8 +5,6 @@ node {
     echo "---> Gather BUILD Configurations <---"
     checkout scm
 
-    project_config = loadProjectConfig()
-
     // Read YAML
     def envName = "qa"
     def comm_conf = "secrets/secrets.yml"
