@@ -8,7 +8,7 @@ node {
     project_config = loadProjectConfig()
 
     // Read YAML
-    def def envName = "qa"
+    def envName = "qa"
     def comm_conf = "secrets/secrets.yml"
     def commonyml = readYaml(file: comm_conf)
 
