@@ -1,7 +1,7 @@
-// Define variables globally
-def tower_host
-def tower_encrypted_user
-def tower_encrypted_pwd
+// Commenting out global variable definitions
+// def tower_host
+// def tower_encrypted_user
+// def tower_encrypted_pwd
 
 node {
     // Get configurations based on branch and config file name
