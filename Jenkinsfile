@@ -1,53 +1,98 @@
-pipeline {
-    agent any
-    parameters {
-        string(name: 'ENV_NAME', defaultValue: 'dev', description: 'Environment name (dev, qa, prod) to load secrets for')
+// ✅ Declare df globally (without `def`)
+df = [:]
+
+node {
+    echo "---> Gather BUILD Configurations <---"
+    checkout scm
+
+    project_config = loadProjectConfig()
+
+    // Read YAML
+    def def envName = "qa"
+    def comm_conf = "secrets/secrets.yml"
+    def commonyml = readYaml(file: comm_conf)
+
+
+    df.tower_encrypted_user = commonyml.tower.tower_encrypted_user
+    df.tower_encrypted_pwd = commonyml.tower.tower_encrypted_pwd
+
+    echo "DEBUG: User -> ${df.tower_encrypted_user}"
+    echo "DEBUG: Password -> ${df.tower_encrypted_pwd}"
+
+}
+
+withEnv(envArr) {
+    stage('Building Wheel') {
+        echo "---------------------------- BUILD WHEEL --------------------------------"
+
+        // Pipeline environment values
+        pipelineEnvironments = """
+        [{
+          "environmentType": "Dev",
+          "environmentName": "Development",
+          "tower_host": "${project_config.tower.tower_host}",
+          "tower_encrypted_user": "${df.tower_encrypted_user}",
+          "tower_encrypted_pwd": "${df.tower_encrypted_pwd}",
+          "job_template": "${job_template}",
+          "ansible_Extras": "${ansible_extra}"
+        }]
+        """
+
+        echo "DEBUG: pipelineEnvironments -> ${pipelineEnvironments}"
     }
-    stages {
-        stage('Load Secrets') {
-            steps {
-                script {
-                    // Define the environment from input parameter
-                    def envName = params.ENV_NAME
-                    def secretsFile = 'secrets.yml'
 
-                    // Validate file existence
-                    if (!fileExists(secretsFile)) {
-                        error "Secrets file does not exist: ${secretsFile}"
-                    }
+    // ✅ Deploy Workflow to Spectrum Edge Node (Conditional Deployment)
+    if (deploy_workflows && yml.publish.executePublishArtifact && deploy_edgenode) {
+        stage('Workflow Edge Node Deployment') {
+            script {
+                echo "---> Deploying to Edge Node <---"
 
-                    // Read the secrets YAML file
-                    def secrets = readYaml(file: secretsFile)
+                def ansible_extra = "-e branch_name=$branch_name -e build_number=$build_number -e deploy_lane=$deploy_env \
+                                    -e committer_name=$committer_name -e artifact_type='whl' \
+                                    -e notification_email=$committer_email -e buildUrl=$buildUrl"
 
-                    // Check if the environment exists in the secrets file
-                    if (!secrets.secrets[envName]) {
-                        error "Secrets for environment '${envName}' not found in ${secretsFile}"
-                    }
-
-                    // Extract environment-specific secrets
-                    def envSecrets = secrets.secrets[envName]
-
-                    // Validate necessary secrets
-                    if (!envSecrets.tower_host || !envSecrets.tower_encrypted_user || !envSecrets.tower_encrypted_pwd) {
-                        error "Secrets file is missing required keys (tower_host, tower_encrypted_user, tower_encrypted_pwd) for '${envName}'."
-                    }
-
-                    // Assign secrets to Jenkins environment variables
-                    env.TOWER_HOST = envSecrets.tower_host
-                    env.TOWER_USER = envSecrets.tower_encrypted_user
-                    env.TOWER_PWD = envSecrets.tower_encrypted_pwd
-
-                    echo "Secrets for '${envName}' loaded successfully."
+                deliveryPipeline {
+                    deployDev = true
+                    pipelineEnvironments = """
+                    [{
+                        "environmentType": "Dev",
+                        "environmentName": "Development",
+                        "tower_host": "${project_config.tower.tower_host}",
+                        "tower_encrypted_user": "${df.tower_encrypted_user}",
+                        "tower_encrypted_pwd": "${df.tower_encrypted_pwd}",
+                        "job_template": "${job_template}",
+                        "ansible_Extras": "${ansible_extra}"
+                    }]
+                    """
                 }
             }
         }
+    }
 
-        stage('Use Secrets') {
-            steps {
-                echo "Using secrets in the pipeline..."
-                echo "Tower Host: ${env.TOWER_HOST}"
-                echo "Tower User: ${env.TOWER_USER}"
-                echo "Tower Password: ${env.TOWER_PWD}"
+    // ✅ Deploy Workflow to Spectrum and UAS App Hosts (Conditional Deployment)
+    if (deploy_workflows && yml.publish.executePublishArtifact) {
+        stage('Workflow Wheel UAS Deployment') {
+            script {
+                echo "---> Deploying to UAS App Hosts <---"
+
+                def ansible_extra = "-e branch_name=$branch_name -e build_number=$build_number -e deploy_lane=$deploy_env \
+                                    -e committer_name=$committer_name -e artifact_type='whl' \
+                                    -e notification_email=$committer_email -e buildUrl=$buildUrl"
+
+                deliveryPipeline {
+                    deployDev = true
+                    pipelineEnvironments = """
+                    [{
+                        "environmentType": "Dev",
+                        "environmentName": "Development",
+                        "tower_host": "${project_config.tower.tower_host}",
+                        "tower_encrypted_user": "${df.tower_encrypted_user}",
+                        "tower_encrypted_pwd": "${df.tower_encrypted_pwd}",
+                        "job_template": "${job_template}",
+                        "ansible_Extras": "${ansible_extra}"
+                    }]
+                    """
+                }
             }
         }
     }
