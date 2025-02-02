@@ -1,97 +1,33 @@
-// ✅ Declare df globally (without `def`)
-df = [:]
+// Define variables globally
+def tower_encrypted_user
+def tower_encrypted_pwd
 
 node {
-    echo "---> Gather BUILD Configurations <---"
-    checkout scm
-
-    // Read YAML
-    def envName = "qa"
+    // Get configurations based on branch and config file name
     def comm_conf = "secrets/secrets.yml"
     def commonyml = readYaml(file: comm_conf)
+    tower_encrypted_user = commonyml.tower.tower_encrypted_user
+    tower_encrypted_pwd = commonyml.tower.tower_encrypted_pwd
 
-
-    df.tower_encrypted_user = commonyml.tower.tower_encrypted_user
-    df.tower_encrypted_pwd = commonyml.tower.tower_encrypted_pwd
-
-    echo "DEBUG: User -> ${df.tower_encrypted_user}"
-    echo "DEBUG: Password -> ${df.tower_encrypted_pwd}"
-
+    echo "user: $tower_encrypted_user"
+    echo "pwd: $tower_encrypted_pwd"
 }
 
-withEnv(envArr) {
-    stage('Building Wheel') {
-        echo "---------------------------- BUILD WHEEL --------------------------------"
+// Now you can use tower_encrypted_user and tower_encrypted_pwd globally
+echo "Global user: $tower_encrypted_user"
+echo "Global pwd: $tower_encrypted_pwd"
 
-        // Pipeline environment values
-        pipelineEnvironments = """
-        [{
-          "environmentType": "Dev",
-          "environmentName": "Development",
-          "tower_host": "${project_config.tower.tower_host}",
-          "tower_encrypted_user": "${df.tower_encrypted_user}",
-          "tower_encrypted_pwd": "${df.tower_encrypted_pwd}",
-          "job_template": "${job_template}",
-          "ansible_Extras": "${ansible_extra}"
-        }]
-        """
+// Example usage in a YAML context
+def yamlContent = """
+"environmentType": "Dev",
+"environmentName": "Development",
+"tower_host": "${project_config.tower.tower_host}",
+"tower_encrypted_user": "${tower_encrypted_user}",
+"tower_encrypted_pwd": "${tower_encrypted_pwd}",
+"job_template": "${job_template}",
+"ansible_Extras": "${ansible_extra}",
+"playbook": "gcp_sndbx_cli_host_cd.yml"
+"""
 
-        echo "DEBUG: pipelineEnvironments -> ${pipelineEnvironments}"
-    }
-
-    // ✅ Deploy Workflow to Spectrum Edge Node (Conditional Deployment)
-    if (deploy_workflows && yml.publish.executePublishArtifact && deploy_edgenode) {
-        stage('Workflow Edge Node Deployment') {
-            script {
-                echo "---> Deploying to Edge Node <---"
-
-                def ansible_extra = "-e branch_name=$branch_name -e build_number=$build_number -e deploy_lane=$deploy_env \
-                                    -e committer_name=$committer_name -e artifact_type='whl' \
-                                    -e notification_email=$committer_email -e buildUrl=$buildUrl"
-
-                deliveryPipeline {
-                    deployDev = true
-                    pipelineEnvironments = """
-                    [{
-                        "environmentType": "Dev",
-                        "environmentName": "Development",
-                        "tower_host": "${project_config.tower.tower_host}",
-                        "tower_encrypted_user": "${df.tower_encrypted_user}",
-                        "tower_encrypted_pwd": "${df.tower_encrypted_pwd}",
-                        "job_template": "${job_template}",
-                        "ansible_Extras": "${ansible_extra}"
-                    }]
-                    """
-                }
-            }
-        }
-    }
-
-    // ✅ Deploy Workflow to Spectrum and UAS App Hosts (Conditional Deployment)
-    if (deploy_workflows && yml.publish.executePublishArtifact) {
-        stage('Workflow Wheel UAS Deployment') {
-            script {
-                echo "---> Deploying to UAS App Hosts <---"
-
-                def ansible_extra = "-e branch_name=$branch_name -e build_number=$build_number -e deploy_lane=$deploy_env \
-                                    -e committer_name=$committer_name -e artifact_type='whl' \
-                                    -e notification_email=$committer_email -e buildUrl=$buildUrl"
-
-                deliveryPipeline {
-                    deployDev = true
-                    pipelineEnvironments = """
-                    [{
-                        "environmentType": "Dev",
-                        "environmentName": "Development",
-                        "tower_host": "${project_config.tower.tower_host}",
-                        "tower_encrypted_user": "${df.tower_encrypted_user}",
-                        "tower_encrypted_pwd": "${df.tower_encrypted_pwd}",
-                        "job_template": "${job_template}",
-                        "ansible_Extras": "${ansible_extra}"
-                    }]
-                    """
-                }
-            }
-        }
-    }
-}
+// Print the YAML content
+echo yamlContent
