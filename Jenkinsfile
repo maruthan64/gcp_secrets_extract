@@ -31,9 +31,6 @@ def yamlContent = """
 "tower_host": "${tower_host}",
 "tower_encrypted_user": "${tower_encrypted_user}",
 "tower_encrypted_pwd": "${tower_encrypted_pwd}",
-"job_template": "${job_template}",
-"ansible_Extras": "${ansible_extra}",
-"playbook": "gcp_sndbx_cli_host_cd.yml"
 """
 
 // Print the YAML content
